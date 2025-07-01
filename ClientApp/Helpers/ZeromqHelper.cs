@@ -1,17 +1,30 @@
 using Microsoft.VisualBasic;
 using NetMQ;
 using NetMQ.Sockets;
+using Microsoft.Extensions.Configuration;
 
 public static class ZeromqHelper
 {
     public static void SendCbor(byte[] cborData)
     {
+        var config = new ConfigurationBuilder()
+            .SetBasePath(Directory.GetCurrentDirectory())
+            .AddJsonFile("../appsettings.json")
+            .Build();
+
+        string ip = config.GetSection("NetMQ:Address:Ip").Get<string>();
+        string port = config.GetSection("NetMQ:Address:Port").Get<string>();
+
+        string topic = config.GetSection("NetMQ:Topic").Get<string>();
+
+        string fullAddress = $"{ip}:{port}";
+
         using (var client = new PublisherSocket())
         {
-            client.Connect("tcp://127.0.0.1:5556");
+            client.Connect(fullAddress);
             Thread.Sleep(500); // <== Let ZMQ handshake settle
 
-            client.SendMoreFrame("D2S").SendFrame(cborData);
+            client.SendMoreFrame(topic).SendFrame(cborData);
 
         }
     }

@@ -1,16 +1,27 @@
 ﻿using NetMQ;
 using NetMQ.Sockets;
-
+using Microsoft.Extensions.Configuration;
 class Program
 {
     static void Main(string[] args)
     {
+
+        var config = new ConfigurationBuilder()
+            .SetBasePath(Directory.GetCurrentDirectory())
+            .AddJsonFile("appsettings.json")
+            .Build();
+
+        string port = config.GetSection("NetMQ:Address:Port").Get<string>();
+        // string fullAddress = $"{ip}:{port}";
+
+        string fullAddress = $"tcp://*:{port}";
+
         using (var server = new SubscriberSocket())
         {
-            server.Bind("tcp://*:5556");
+            server.Bind(fullAddress);
             server.Subscribe("");
 
-            Console.WriteLine("📡 Server listening on port 5556...");
+            Console.WriteLine($"📡 Server listening on port {port}...");
 
             while (true)
             {
