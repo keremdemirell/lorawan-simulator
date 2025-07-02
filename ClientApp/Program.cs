@@ -76,9 +76,13 @@ public static class Program
                     // Console.WriteLine($"Enter {i + 1}. AppSKey (0x..)");
                     // string customAppSKey = Console.ReadLine();
 
-                    string customDevAddr = GetStringInput($"Enter {i + 1}. DevAddr (0x..): ");
-                    string customNwkSKey = GetStringInput($"Enter {i + 1}. NwkSKey (0x..): ");
-                    string customAppSKey = GetStringInput($"Enter {i + 1}. AppSKey (0x..): ");
+                    // string customDevAddr = GetStringInput($"Enter {i + 1}. DevAddr (0x..): ");
+                    // string customNwkSKey = GetStringInput($"Enter {i + 1}. NwkSKey (0x..): ");
+                    // string customAppSKey = GetStringInput($"Enter {i + 1}. AppSKey (0x..): ");
+
+                    string customDevAddr = ValidateDeviceInformationInput($"Enter {i + 1}. DevAddr (0x..): ", "devAddr");
+                    string customNwkSKey = ValidateDeviceInformationInput($"Enter {i + 1}. NwkSKey (0x..): ", "nwkSKey");
+                    string customAppSKey = ValidateDeviceInformationInput($"Enter {i + 1}. AppSKey (0x..): ", "appSKey");
 
                     if (packetGenerationOption == 1)
                     {
@@ -370,6 +374,73 @@ public static class Program
         }
     }
 
+    // public static string ValidateDevAddrInput(string prompt)
+    // {
+    //     while (true)
+    //     {
+    //         Console.WriteLine(prompt);
+    //         string input = Console.ReadLine().Trim();
 
+    //         if (input.StartsWith("0x") && input.Length == 10 && IsHex(input.Substring(2)))
+    //         {
+    //             return input;
+    //         }
+    //         else
+    //         {
+    //             Console.WriteLine("Invalid DevAddr. Please enter a value with 8 hex characters after '0x'.");
+    //         }
+    //     }
+    // }
+
+    // public static string ValidateSKeyInput(string prompt)
+    // {
+    //     while (true)
+    //     {
+    //         Console.WriteLine(prompt);
+    //         string input = Console.ReadLine().Trim();
+
+    //         if (input.StartsWith("0x") && input.Length == 34 && IsHex(input.Substring(2)))
+    //         {
+    //             return input;
+    //         }
+    //         else
+    //         {
+    //             Console.WriteLine("Invalid Session Key. Please enter a value with 32 hex characters after '0x'.");
+    //         }
+    //     }
+    // }
+
+    public static string ValidateDeviceInformationInput(string prompt, string deviceInfo)
+    {
+        while (true)
+        {
+            Console.WriteLine(prompt);
+            string input = Console.ReadLine().Trim();
+
+            int inputLength = deviceInfo.Trim().ToUpper() == "DEVADDR" ? 10 : 34;
+
+            if (input.StartsWith("0x") && input.Length == inputLength && IsHex(input.Substring(2)))
+            {
+                return input;
+            }
+            else
+            {
+                Console.WriteLine($"Invalid {deviceInfo.ToLower()}. Please enter a value with {inputLength} hex characters including '0x'.");
+            }
+
+        }
+    }
+
+    public static bool IsHex(string input)
+    {
+        foreach (char c in input)
+        {
+            if (!((c >= '0' && c <= '9') || (c >= 'A' && c <= 'F') || (c >= 'a' && c <= 'f')))
+            {
+                return false;
+            }
+        }
+        return true;
+    }
 
 }
