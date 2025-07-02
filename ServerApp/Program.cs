@@ -12,20 +12,22 @@ class Program
             .Build();
 
         string port = config.GetSection("NetMQ:Address:Port").Get<string>();
-        // string fullAddress = $"{ip}:{port}";
+        string ip = config.GetSection("NetMQ:Address:Ip").Get<string>();
 
-        string fullAddress = $"tcp://*:{port}";
+        string topic = config.GetSection("NetMQ:Topic").Get<string>();
+
+        string fullAddress = $"{ip}:{port}";
 
         using (var server = new SubscriberSocket())
         {
             server.Bind(fullAddress);
-            server.Subscribe("");
+            server.Subscribe(topic);
 
             Console.WriteLine($"📡 Server listening on port {port}...");
 
             while (true)
             {
-                var topic = server.ReceiveFrameString();
+                // topic = server.ReceiveFrameString();
 
                 byte[] cborBytes = server.ReceiveFrameBytes();
                 Console.WriteLine("Received {0} bytes from client.", cborBytes.Length);
