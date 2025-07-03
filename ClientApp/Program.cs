@@ -5,7 +5,6 @@ using System.Timers;
 using Microsoft.Extensions.Configuration;
 using System.Formats.Cbor;
 using Serilog;
-using Microsoft.VisualBasic;
 
 public static class Program
 {
@@ -15,21 +14,25 @@ public static class Program
     static void Main(string[] args)
     {
 
+        var config = new ConfigurationBuilder()
+                .SetBasePath(Directory.GetCurrentDirectory())
+                .AddJsonFile("appsettings.json")
+                .Build();
+
+        // Log.Logger = new LoggerConfiguration()
+        //     .MinimumLevel.Debug()
+        //     .WriteTo.File("logs/log.txt", rollingInterval: RollingInterval.Day)
+        //     .WriteTo.Console()
+        //     .CreateLogger();
         Log.Logger = new LoggerConfiguration()
-            .MinimumLevel.Debug()
-            .WriteTo.File("logs/log.txt", rollingInterval: RollingInterval.Day)
-            .CreateLogger();
+                .ReadFrom.Configuration(config)
+                .CreateLogger();
 
         Log.Information("LoRaWAN Simulator Started");
 
         while (true)
         {
             byte[] phyPayload = new byte[] { };
-
-            var config = new ConfigurationBuilder()
-                .SetBasePath(Directory.GetCurrentDirectory())
-                .AddJsonFile("appsettings.json")
-                .Build();
 
             List<DeviceConfig> packetDevices = config.GetSection("DeviceSources:ByPacketSize").Get<List<DeviceConfig>>();
             List<TimedDeviceConfig> timedDevices = config.GetSection("DeviceSources:ByDuration").Get<List<TimedDeviceConfig>>();
@@ -40,7 +43,7 @@ public static class Program
 
             // Console.WriteLine("By packet size or by timer? (P/T)");
             // string isTimer = Console.ReadLine();
-            int packetGenerationOption = GetIntInput("Choose the method to draw devices:\n1 - Packet size\n2 - Timer", 2);
+            int packetGenerationOption = GetIntInput("Choose the method to generate packages:\n1 - Packet size\n2 - Timer", 2);
 
             if (deviceInfoSource == 1)
             {
@@ -60,7 +63,7 @@ public static class Program
 
                 // Console.WriteLine("How many devices?");
                 // int deviceCount = int.Parse(Console.ReadLine());
-                int deviceCount = GetIntInput("How many devices would you like to input?", 0);
+                int deviceCount = GetIntInput("How many devices would you like to input?");
 
                 List<DeviceConfig> customDevices = new List<DeviceConfig>(deviceCount);
                 List<TimedDeviceConfig> customTimedDevices = new List<TimedDeviceConfig>(deviceCount);
@@ -88,7 +91,7 @@ public static class Program
                     {
                         // Console.WriteLine($"Enter {i + 1}. Packet Size");
                         // int customPacketSize = int.Parse(Console.ReadLine());
-                        int customPacketSize = GetIntInput($"Enter {i + 1}. Packet Size: ", 0);
+                        int customPacketSize = GetIntInput($"Enter {i + 1}. Packet Size: ");
 
                         customDevices.Add(new DeviceConfig(customDevAddr, customNwkSKey, customAppSKey, customPacketSize));
                     }
@@ -99,8 +102,8 @@ public static class Program
 
                         // Console.WriteLine($"Enter {i + 1}. Interval (m.seconds)");
                         // int customIntervalSeconds = int.Parse(Console.ReadLine());
-                        int customDuration = GetIntInput($"Enter {i + 1}. Duration (seconds): ", 0);
-                        int customIntervalSeconds = GetIntInput($"Enter {i + 1}. Interval (milliseconds): ", 0);
+                        int customDuration = GetIntInput($"Enter {i + 1}. Duration (seconds): ");
+                        int customIntervalSeconds = GetIntInput($"Enter {i + 1}. Interval (milliseconds): ");
 
                         customTimedDevices.Add(new TimedDeviceConfig(customDevAddr, customNwkSKey, customAppSKey, customDuration, customIntervalSeconds));
                     }
@@ -322,6 +325,11 @@ public static class Program
         return writer.Encode();
     }
 
+    public static int GetIntInput(string prompt)
+    {
+        return GetIntInput(prompt,0);
+    }
+
     public static int GetIntInput(string prompt, int maxChoice)
     {
         while (true)
@@ -349,30 +357,30 @@ public static class Program
                     return input;
                 }
             }
-            catch (FormatException)
+            catch (FormatException ex)
             {
-                Console.WriteLine("Invalid input. Please enter a valid number.");
+                Log.Error(ex, "Invalid input. Please enter a valid number.");
             }
         }
     }
 
-    public static string GetStringInput(string prompt)
-    {
-        while (true)
-        {
-            Console.WriteLine(prompt);
-            string input = Console.ReadLine().Trim();
+    // public static string GetStringInput(string prompt)
+    // {
+    //     while (true)
+    //     {
+    //         Console.WriteLine(prompt);
+    //         string input = Console.ReadLine().Trim();
 
-            if (string.IsNullOrEmpty(input))
-            {
-                Console.WriteLine("Input cannot be empty. Please try again.");
-            }
-            else
-            {
-                return input;
-            }
-        }
-    }
+    //         if (string.IsNullOrEmpty(input))
+    //         {
+    //             Console.WriteLine("Input cannot be empty. Please try again.");
+    //         }
+    //         else
+    //         {
+    //             return input;
+    //         }
+    //     }
+    // }
 
     // public static string ValidateDevAddrInput(string prompt)
     // {
@@ -425,7 +433,8 @@ public static class Program
             }
             else
             {
-                Console.WriteLine($"Invalid {deviceInfo.ToLower()}. Please enter a value with {inputLength} hex characters including '0x'.");
+                Log.Error($"Invalid {deviceInfo.ToLower()}. Please enter a value with {inputLength} hex characters including '0x'.");
+                //Console.WriteLine($"Invalid {deviceInfo.ToLower()}. Please enter a value with {inputLength} hex characters including '0x'.");
             }
 
         }
