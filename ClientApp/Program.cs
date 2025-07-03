@@ -9,13 +9,6 @@ public static class Program
     public static int AggregationId = 1;
     public static Random rnd = new Random();
 
-    public enum DeviceInfoType
-    {
-        DevAddr,
-        NwkSKey,
-        AppSKey
-    }
-
     static void Main(string[] args)
     {
 
@@ -36,26 +29,22 @@ public static class Program
 
             List<DeviceConfig> packetDevices = config.GetSection("DeviceSources:ByPacketSize").Get<List<DeviceConfig>>();
             List<TimedDeviceConfig> timedDevices = config.GetSection("DeviceSources:ByDuration").Get<List<TimedDeviceConfig>>();
+            var isInteractive = config.GetSection("IsInteractive").Get<bool>();
 
-            int deviceInfoSource = GetIntInput("How should the devices be drawn?\n1 - From appsettings.json\n2 - Your custom input", 2);
-
-            int packetGenerationOption = GetIntInput("Choose the method to generate packages:\n1 - Packet size\n2 - Timer", 2);
-
+            var deviceInfoSource =
+                isInteractive == true ?
+                GetIntInput("How should the devices be drawn?\n1 - From appsettings.json\n2 - Your custom input", 2) : 1;
+            
             if (deviceInfoSource == 1)
             {
-                if (packetGenerationOption == 1)
-                {
-                    ArrangePHYPayload(packetDevices);
-                }
-
-                else
-                {
-                    ArrangeTimedPHYPayload(timedDevices);
-                }
+                ArrangePHYPayload(packetDevices);                
+                ArrangeTimedPHYPayload(timedDevices);
             }
 
             else
             {
+
+                int packetGenerationOption = GetIntInput("Choose the method to generate packages:\n1 - Packet size\n2 - Timer", 2);
 
                 int deviceCount = GetIntInput("How many devices would you like to input?");
 
@@ -112,7 +101,7 @@ public static class Program
 
             Log.Information("Session finished");
 
-            int restart = GetIntInput("Would you like to start over?\n1 - Yes\n2 - No", 2);
+            int restart = isInteractive == true ? GetIntInput("Would you like to start over?\n1 - Yes\n2 - No", 2) : 2;
             if (restart == 2) break;
 
             CborPayloads = new();

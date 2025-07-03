@@ -1,0 +1,7 @@
+version: '3.8'
+services:
+  lorawansim:
+    image: lorawan-sim
+    build:
+      context: .
+      dockerfile: ./Dockerfile
