@@ -1,6 +1,6 @@
 public class CborPayload
 {
-    public int RegionNumber { get; set; } //?
+    public int RegionNumber { get; set; }
     public long Timestamp { get; set; }
     public int RSSI { get; set; }
     public int SNR { get; set; }

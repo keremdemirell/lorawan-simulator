@@ -1,4 +1,3 @@
-using System.Net.Http.Headers;
 using System.Text;
 
 public static class PayloadBuilder
@@ -51,7 +50,6 @@ public static class PayloadBuilder
         int randomFactor = rnd.Next(0, 3);
         string[] factors = new string[] { "TEMP", "HUMD", "PRESR", "PRECP" };
         int randomValue = rnd.Next(0, 50);
-        // string appData = "TEMP=24";
         string appData = factors[randomFactor] + "=" + randomValue;
         byte[] frmpayload = Encoding.ASCII.GetBytes(appData);
 
@@ -67,15 +65,8 @@ public static class PayloadBuilder
         macPayload.Add(fctrl);
         macPayload.AddRange(fcnt);
         macPayload.Add(fport);
-        // macPayload.AddRange(frmpayload);
 
         // frmpayloadEncryption
-        // byte[] appSKey = new byte[16] {
-        //     0x2B, 0x7E, 0x15, 0x16,
-        //     0x28, 0xAE, 0xD2, 0xA6,
-        //     0xAB, 0xF7, 0x15, 0x88,
-        //     0x09, 0xCF, 0x4F, 0x3C
-        // };
         byte[] appSKey = convertToBytes(appSKeyString);
 
         byte[] Si = EncrypytHelper.CreateKeystreamBlock(appSKey, 0x00, devAddr, us_fcnt, 1);
@@ -87,19 +78,11 @@ public static class PayloadBuilder
 
         // calculating MIC
 
-        // byte[] nwkSKey = new byte[16] {
-        //     0x4D, 0x3C, 0xFA, 0x01,
-        //     0x99, 0xAB, 0x22, 0x5D,
-        //     0x11, 0x00, 0x88, 0x55,
-        //     0x6A, 0xCC, 0xFF, 0x03
-        // };
         byte[] nwkSKey = convertToBytes(nwkSKeyString);
 
         byte[] micInput = new byte[1 + macPayload.Count];
         micInput[0] = mhdr;
         macPayload.CopyTo(micInput, 1);
-
-        // byte[] mic = EncrypytHelper.CalculateMIC(nwkSKey, devAddr, us_fcnt, micInput, 0x00);
 
         byte[] mic = EncrypytHelper.CalculateMIC(fport != 0x00 ? nwkSKey : appSKey, devAddr, us_fcnt, micInput, 0x00);
         phyPayload.AddRange(mic);

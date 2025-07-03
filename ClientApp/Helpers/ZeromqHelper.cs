@@ -1,4 +1,3 @@
-using Microsoft.VisualBasic;
 using NetMQ;
 using NetMQ.Sockets;
 using Microsoft.Extensions.Configuration;
@@ -12,10 +11,6 @@ public static class ZeromqHelper
             .SetBasePath(Directory.GetCurrentDirectory())
             .AddJsonFile("appsettings.json")
             .Build();
-
-        // Log.Logger = new LoggerConfiguration()
-        //     .WriteTo.File("logs/try.txt", rollingInterval: RollingInterval.Day)
-        //     .CreateLogger();
 
         string ip = config.GetSection("NetMQ:Address:Ip").Get<string>();
         string port = config.GetSection("NetMQ:Address:Port").Get<string>();

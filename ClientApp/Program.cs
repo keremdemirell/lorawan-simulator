@@ -1,7 +1,4 @@
-﻿// using Org.BouncyCastle.Crypto;
-// using Org.BouncyCastle.Crypto.Macs;
-// using Org.BouncyCastle.Crypto.Parameters;
-using System.Timers;
+﻿using System.Timers;
 using Microsoft.Extensions.Configuration;
 using System.Formats.Cbor;
 using Serilog;
@@ -11,6 +8,14 @@ public static class Program
     public static List<CborPayload> CborPayloads = new();
     public static int AggregationId = 1;
     public static Random rnd = new Random();
+
+    public enum DeviceInfoType
+    {
+        DevAddr,
+        NwkSKey,
+        AppSKey
+    }
+
     static void Main(string[] args)
     {
 
@@ -19,11 +24,6 @@ public static class Program
                 .AddJsonFile("appsettings.json")
                 .Build();
 
-        // Log.Logger = new LoggerConfiguration()
-        //     .MinimumLevel.Debug()
-        //     .WriteTo.File("logs/log.txt", rollingInterval: RollingInterval.Day)
-        //     .WriteTo.Console()
-        //     .CreateLogger();
         Log.Logger = new LoggerConfiguration()
                 .ReadFrom.Configuration(config)
                 .CreateLogger();
@@ -37,32 +37,26 @@ public static class Program
             List<DeviceConfig> packetDevices = config.GetSection("DeviceSources:ByPacketSize").Get<List<DeviceConfig>>();
             List<TimedDeviceConfig> timedDevices = config.GetSection("DeviceSources:ByDuration").Get<List<TimedDeviceConfig>>();
 
-            // Console.WriteLine("Should the devices be entered by you or taken from appsettings.json? (A/C)");
-            // string isCustomDevice = Console.ReadLine();
             int deviceInfoSource = GetIntInput("How should the devices be drawn?\n1 - From appsettings.json\n2 - Your custom input", 2);
 
-            // Console.WriteLine("By packet size or by timer? (P/T)");
-            // string isTimer = Console.ReadLine();
             int packetGenerationOption = GetIntInput("Choose the method to generate packages:\n1 - Packet size\n2 - Timer", 2);
 
             if (deviceInfoSource == 1)
             {
                 if (packetGenerationOption == 1)
                 {
-                    arrangePHYPayload(packetDevices);
+                    ArrangePHYPayload(packetDevices);
                 }
 
                 else
                 {
-                    arrangeTimedPHYPayload(timedDevices);
+                    ArrangeTimedPHYPayload(timedDevices);
                 }
             }
 
             else
             {
 
-                // Console.WriteLine("How many devices?");
-                // int deviceCount = int.Parse(Console.ReadLine());
                 int deviceCount = GetIntInput("How many devices would you like to input?");
 
                 List<DeviceConfig> customDevices = new List<DeviceConfig>(deviceCount);
@@ -70,38 +64,19 @@ public static class Program
 
                 for (int i = 0; i < deviceCount; i++)
                 {
-                    // Console.WriteLine($"Enter {i + 1}. DevAddr (0x..)");
-                    // string customDevAddr = Console.ReadLine();
 
-                    // Console.WriteLine($"Enter {i + 1}. NwkSKey (0x..)");
-                    // string customNwkSKey = Console.ReadLine();
-
-                    // Console.WriteLine($"Enter {i + 1}. AppSKey (0x..)");
-                    // string customAppSKey = Console.ReadLine();
-
-                    // string customDevAddr = GetStringInput($"Enter {i + 1}. DevAddr (0x..): ");
-                    // string customNwkSKey = GetStringInput($"Enter {i + 1}. NwkSKey (0x..): ");
-                    // string customAppSKey = GetStringInput($"Enter {i + 1}. AppSKey (0x..): ");
-
-                    string customDevAddr = ValidateDeviceInformationInput($"Enter {i + 1}. DevAddr (0x..): ", "devAddr");
-                    string customNwkSKey = ValidateDeviceInformationInput($"Enter {i + 1}. NwkSKey (0x..): ", "nwkSKey");
-                    string customAppSKey = ValidateDeviceInformationInput($"Enter {i + 1}. AppSKey (0x..): ", "appSKey");
+                    string customDevAddr = ValidateDeviceInformationInput($"Enter {i + 1}. DevAddr (0x..): ", DeviceInfoType.DevAddr);
+                    string customNwkSKey = ValidateDeviceInformationInput($"Enter {i + 1}. NwkSKey (0x..): ", DeviceInfoType.NwkSKey);
+                    string customAppSKey = ValidateDeviceInformationInput($"Enter {i + 1}. AppSKey (0x..): ", DeviceInfoType.AppSKey);
 
                     if (packetGenerationOption == 1)
                     {
-                        // Console.WriteLine($"Enter {i + 1}. Packet Size");
-                        // int customPacketSize = int.Parse(Console.ReadLine());
                         int customPacketSize = GetIntInput($"Enter {i + 1}. Packet Size: ");
 
                         customDevices.Add(new DeviceConfig(customDevAddr, customNwkSKey, customAppSKey, customPacketSize));
                     }
                     else
                     {
-                        // Console.WriteLine($"Enter {i + 1}. Duration (seconds)");
-                        // int customDuration = int.Parse(Console.ReadLine());
-
-                        // Console.WriteLine($"Enter {i + 1}. Interval (m.seconds)");
-                        // int customIntervalSeconds = int.Parse(Console.ReadLine());
                         int customDuration = GetIntInput($"Enter {i + 1}. Duration (seconds): ");
                         int customIntervalSeconds = GetIntInput($"Enter {i + 1}. Interval (milliseconds): ");
 
@@ -111,11 +86,11 @@ public static class Program
 
                 if (packetGenerationOption == 1)
                 {
-                    arrangePHYPayload(customDevices);
+                    ArrangePHYPayload(customDevices);
                 }
                 else
                 {
-                    arrangeTimedPHYPayload(customTimedDevices);
+                    ArrangeTimedPHYPayload(customTimedDevices);
                 }
 
             }
@@ -128,19 +103,12 @@ public static class Program
                 Payloads = CborPayloads
             };
 
-            // string json = JsonConvert.SerializeObject(cborPacket, Formatting.Indented);
-            // Console.WriteLine("Serialized CBOR Packet:");
-            // Console.WriteLine(json);
 
             byte[] cborData = SerializeToCbor(cborPacket);
-            // Console.WriteLine(BitConverter.ToString(cborData).Replace("-", ""));
             Log.Debug("Created Cbor: {Cbor}", BitConverter.ToString(cborData).Replace("-", ""));
             File.WriteAllBytes("packet.cbor", cborData);
 
             ZeromqHelper.SendCbor(cborData);
-
-            // Console.WriteLine("Would you like to start over? (Y/N)");
-            // string restart = Console.ReadLine().Trim().ToUpper();
 
             Log.Information("Session finished");
 
@@ -154,23 +122,22 @@ public static class Program
         Log.CloseAndFlush();
     }
 
-    public static void arrangePHYPayload(List<DeviceConfig> devices)
+    public static void ArrangePHYPayload(List<DeviceConfig> devices)
     {
         foreach (DeviceConfig device in devices)
         {
-            // Console.WriteLine($"For device DevAddr: {device.DevAddr}, creating {device.PacketSize} packets:");
             Log.Debug("For device DevAddr: {device.DevAddr}, creating {device.PacketSize} packets:", device.DevAddr, device.PacketSize);
 
             for (int i = 0; i < device.PacketSize; i++)
             {
-                byte[] phyPayload = generatePHYPayload(device.DevAddr, device.NwkSKey, device.AppSKey);
+                byte[] phyPayload = GeneratePHYPayload(device.DevAddr, device.NwkSKey, device.AppSKey);
                 Log.Information("PHYPayload generated for DevAddr {DevAddr} (Packet {generatedPacket}/{packetSize})", device.DevAddr, i + 1, device.PacketSize);
                 EncapsulatePhyPayload(phyPayload);
             }
         }
     }
 
-    public static void arrangeTimedPHYPayload(List<TimedDeviceConfig> devices)
+    public static void ArrangeTimedPHYPayload(List<TimedDeviceConfig> devices)
     {
         List<Task> tasks = new();
 
@@ -183,21 +150,19 @@ public static class Program
             System.Timers.Timer timer = new System.Timers.Timer(device.IntervalSeconds);
             timer.Elapsed += (sender, e) =>
             {
-                byte[] phyPayload = generateTimedPHYPayload(sender, e, device.DevAddr, device.NwkSKey, device.AppSKey);
+                byte[] phyPayload = GenerateTimedPHYPayload(sender, e, device.DevAddr, device.NwkSKey, device.AppSKey);
                 Log.Information("PHYPayload generated for DevAddr {DevAddr} ({generatedPacket} seconds of {totalTime})", device.DevAddr, device.IntervalSeconds / 1000 * i++, device.Duration);
                 EncapsulatePhyPayload(phyPayload);
             };
             timer.AutoReset = true;
             timer.Enabled = true;
 
-            // Console.WriteLine($"Sending LoRaWAN packets every {device.IntervalSeconds} milliseconds for {device.DevAddr}.");
             Log.Debug("Sending LoRaWAN packets every {device.IntervalSeconds} milliseconds for {device.DevAddr}.", device.IntervalSeconds, device.DevAddr);
 
             Task.Delay(device.Duration * 1000).ContinueWith(_ =>
             {
                 timer.Stop();
                 timer.Dispose();
-                // Console.WriteLine($"Finished the {device.Duration} seconds sending for {device.DevAddr}");
                 Log.Debug("Finished the {device.Duration} seconds sending for {device.DevAddr}", device.Duration, device.DevAddr);
                 tcs.SetResult();
             });
@@ -209,35 +174,24 @@ public static class Program
     }
 
 
-    public static byte[] generatePHYPayload(string devAddr, string nwkSKey, string appSKey) // Object source, ElapsedEventArgs e
+    public static byte[] GeneratePHYPayload(string devAddr, string nwkSKey, string appSKey) // Object source, ElapsedEventArgs e
     {
         byte[] phyPayload = PayloadBuilder.BuildPhyPayload(devAddr, nwkSKey, appSKey);
-        // Console.WriteLine($"Generated PHYPayload :  for devaddr {devAddr}");
         Log.Debug("Generated PHYPayload for devaddr {devaddr}: {hexPayload}", devAddr, BitConverter.ToString(phyPayload).Replace("-", ""));
-        // Console.WriteLine(BitConverter.ToString(phyPayload));
-
-        // string hexPayload = BitConverter.ToString(phyPayload).Replace("-", "");
-        // Console.WriteLine(hexPayload);
 
         return phyPayload;
     }
 
-    public static byte[] generateTimedPHYPayload(Object source, ElapsedEventArgs e, string devAddr, string nwkSKey, string appSKey) // Object source, ElapsedEventArgs e
+    public static byte[] GenerateTimedPHYPayload(Object source, ElapsedEventArgs e, string devAddr, string nwkSKey, string appSKey) // Object source, ElapsedEventArgs e
     {
         byte[] phyPayload = PayloadBuilder.BuildPhyPayload(devAddr, nwkSKey, appSKey);
-        // Console.WriteLine($"Generated PHYPayload :  for devaddr {devAddr}");
         Log.Debug("Generated PHYPayload for devaddr {devaddr}: {hexPayload}", devAddr, BitConverter.ToString(phyPayload).Replace("-", ""));
-        // Console.WriteLine(BitConverter.ToString(phyPayload));
-
-        // string hexPayload = BitConverter.ToString(phyPayload).Replace("-", "");
-        // Console.WriteLine(hexPayload);
 
         return phyPayload;
     }
 
     public static CborPayload EncapsulatePhyPayload(byte[] phyPayload)
     {
-        // Random rnd = new Random();
         long timestamp = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeSeconds();
 
         CborPayload cborPayload = new CborPayload()
@@ -262,7 +216,6 @@ public static class Program
     public static CborHeader EncapsulateCbroPayloadWithHeader(int payloadLen)
     {
 
-        // Random rn = new Random();
         int satelliteIdIndex = rnd.Next(0, 7);
 
         var config = new ConfigurationBuilder()
@@ -283,7 +236,6 @@ public static class Program
         };
 
         Log.Information("CBOR Payloads encapsulated with CBOR Header at timestamp {timestamp}", timestamp);
-
 
         return cborHeader;
     }
@@ -327,7 +279,7 @@ public static class Program
 
     public static int GetIntInput(string prompt)
     {
-        return GetIntInput(prompt,0);
+        return GetIntInput(prompt, 0);
     }
 
     public static int GetIntInput(string prompt, int maxChoice)
@@ -335,7 +287,6 @@ public static class Program
         while (true)
         {
             Console.WriteLine(prompt);
-            // int input = int.Parse(Console.ReadLine().Trim());
 
             try
             {
@@ -349,7 +300,7 @@ public static class Program
                     }
                     else
                     {
-                        Console.WriteLine($"Invalid input. Please enter a number between 1 and {maxChoice}.");
+                        Log.Warning($"Invalid input. Please enter a number between 1 and {maxChoice}.");
                     }
                 }
                 else
@@ -364,68 +315,15 @@ public static class Program
         }
     }
 
-    // public static string GetStringInput(string prompt)
-    // {
-    //     while (true)
-    //     {
-    //         Console.WriteLine(prompt);
-    //         string input = Console.ReadLine().Trim();
-
-    //         if (string.IsNullOrEmpty(input))
-    //         {
-    //             Console.WriteLine("Input cannot be empty. Please try again.");
-    //         }
-    //         else
-    //         {
-    //             return input;
-    //         }
-    //     }
-    // }
-
-    // public static string ValidateDevAddrInput(string prompt)
-    // {
-    //     while (true)
-    //     {
-    //         Console.WriteLine(prompt);
-    //         string input = Console.ReadLine().Trim();
-
-    //         if (input.StartsWith("0x") && input.Length == 10 && IsHex(input.Substring(2)))
-    //         {
-    //             return input;
-    //         }
-    //         else
-    //         {
-    //             Console.WriteLine("Invalid DevAddr. Please enter a value with 8 hex characters after '0x'.");
-    //         }
-    //     }
-    // }
-
-    // public static string ValidateSKeyInput(string prompt)
-    // {
-    //     while (true)
-    //     {
-    //         Console.WriteLine(prompt);
-    //         string input = Console.ReadLine().Trim();
-
-    //         if (input.StartsWith("0x") && input.Length == 34 && IsHex(input.Substring(2)))
-    //         {
-    //             return input;
-    //         }
-    //         else
-    //         {
-    //             Console.WriteLine("Invalid Session Key. Please enter a value with 32 hex characters after '0x'.");
-    //         }
-    //     }
-    // }
-
-    public static string ValidateDeviceInformationInput(string prompt, string deviceInfo)
+    public static string ValidateDeviceInformationInput(string prompt, DeviceInfoType deviceInfo)
     {
         while (true)
         {
             Console.WriteLine(prompt);
             string input = Console.ReadLine().Trim();
 
-            int inputLength = deviceInfo.Trim().ToUpper() == "DEVADDR" ? 10 : 34;
+            // int inputLength = deviceInfo.Trim().ToUpper() == "DEVADDR" ? 10 : 34;
+            int inputLength = deviceInfo == DeviceInfoType.DevAddr ? 10 : 34;
 
             if (input.StartsWith("0x") && input.Length == inputLength && IsHex(input.Substring(2)))
             {
@@ -433,8 +331,7 @@ public static class Program
             }
             else
             {
-                Log.Error($"Invalid {deviceInfo.ToLower()}. Please enter a value with {inputLength} hex characters including '0x'.");
-                //Console.WriteLine($"Invalid {deviceInfo.ToLower()}. Please enter a value with {inputLength} hex characters including '0x'.");
+                Log.Warning($"Invalid {deviceInfo.ToString()}. Please enter a value with {inputLength} hex characters including '0x'.");
             }
 
         }

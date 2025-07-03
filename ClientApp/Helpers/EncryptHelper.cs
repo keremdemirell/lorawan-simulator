@@ -1,4 +1,3 @@
-using System.Reflection.Metadata;
 using Org.BouncyCastle.Crypto.Engines;
 using Org.BouncyCastle.Crypto.Macs;
 using Org.BouncyCastle.Crypto.Parameters;
@@ -108,50 +107,4 @@ public static class EncrypytHelper
 
         return finalMIC.Take(4).ToArray();
     }
-
-
 }
-
-
-// public static byte[] CalculateMIC(
-//     byte[] key,
-//     byte[] devAddr,
-//     ushort fcnt,
-//     byte[] msg,
-//     byte dir
-// )
-// {
-//     // Build B0 block
-//     byte[] blockB = new byte[16];
-//     blockB[0] = 0x49;
-//     blockB[1] = 0x00;
-//     blockB[2] = 0x00;
-//     blockB[3] = 0x00;
-//     blockB[4] = 0x00;
-//     blockB[5] = dir;
-//     blockB[6] = devAddr[0];
-//     blockB[7] = devAddr[1];
-//     blockB[8] = devAddr[2];
-//     blockB[9] = devAddr[3];
-//     blockB[10] = (byte)(fcnt & 0xFF);
-//     blockB[11] = (byte)((fcnt >> 8) & 0xFF);
-//     blockB[12] = 0x00;
-//     blockB[13] = 0x00;
-//     blockB[14] = 0x00;
-//     blockB[15] = (byte)msg.Length;
-
-//     // Combine B0 + msg
-//     byte[] input = new byte[blockB.Length + msg.Length];
-//     Array.Copy(blockB, 0, input, 0, blockB.Length);
-//     Array.Copy(msg, 0, input, blockB.Length, msg.Length);
-
-//     // Calculate AES-CMAC
-//     CMac cmac = new CMac(new AesEngine());
-//     cmac.Init(new KeyParameter(key));
-//     cmac.BlockUpdate(input, 0, input.Length);
-
-//     byte[] fullMic = new byte[16];
-//     cmac.DoFinal(fullMic, 0);
-
-//     return fullMic.Take(4).ToArray(); // Return first 4 bytes
-// }
