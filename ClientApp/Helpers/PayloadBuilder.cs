@@ -1,5 +1,6 @@
 using System.Text;
 using Serilog;
+using Microsoft.Extensions.Configuration;
 using System.Timers;
 
 public static class PayloadBuilder
@@ -18,6 +19,12 @@ public static class PayloadBuilder
     // **└── MIC (Message Integrity Code – 4 bytes)**
 
     private static ushort us_fcnt = 0;
+
+    private static readonly IConfiguration Config = new ConfigurationBuilder()
+        .SetBasePath(Directory.GetCurrentDirectory())
+        .AddJsonFile("appsettings.json")
+        .Build();
+    private static readonly int TriggerChance = Config.GetValue<int>("CBORTriggerChance");
 
     public static byte[] BuildPhyPayload(string devAddrString, string nwkSKeyString, string appSKeyString)
     {
@@ -105,8 +112,8 @@ public static class PayloadBuilder
 
         return bytes;
     }
-    
-    
+
+
     public static void ArrangePHYPayload(List<DeviceConfig> devices)
     {
         Random rnd = new Random();
@@ -120,7 +127,7 @@ public static class PayloadBuilder
                 byte[] phyPayload = GeneratePHYPayload(device.DevAddr, device.NwkSKey, device.AppSKey);
                 Log.Information("PHYPayload generated for DevAddr {DevAddr} (Packet {generatedPacket}/{packetSize})", device.DevAddr, i + 1, device.PacketSize);
                 CborHelper.EncapsulatePhyPayload(phyPayload);
-                if (rnd.Next(0, 100) < 20) // %20  chance
+                if (rnd.Next(0, 100) < TriggerChance)
                 {
                     CborHelper.TriggerCborPacketCreation();
                 }
@@ -145,7 +152,7 @@ public static class PayloadBuilder
                 byte[] phyPayload = GenerateTimedPHYPayload(sender, e, device.DevAddr, device.NwkSKey, device.AppSKey);
                 Log.Information("PHYPayload generated for DevAddr {DevAddr} ({generatedPacket} seconds of {totalTime})", device.DevAddr, device.IntervalSeconds / 1000 * i++, device.Duration);
                 CborHelper.EncapsulatePhyPayload(phyPayload);
-                if (rnd.Next(0, 100) < 20) // %20  chance
+                if (rnd.Next(0, 100) < TriggerChance)
                 {
                     CborHelper.TriggerCborPacketCreation();
                 }

@@ -32,7 +32,7 @@ public static class CborHelper
         return cborPayload;
     }
 
-    public static CborHeader EncapsulateCbroPayloadWithHeader(int payloadLen)
+    public static CborHeader EncapsulateCbroPayloadWithHeader()
     {
 
         int satelliteIdIndex = rnd.Next(0, 7);
@@ -51,7 +51,7 @@ public static class CborHelper
             SatelliteId = satelliteId,
             AggregationId = AggregationId++,
             TimeStamp = timestamp,
-            PayloadLength = payloadLen
+            PayloadLength = CborPayloads.Count
         };
 
         Log.Information("CBOR Payloads encapsulated with CBOR Header at timestamp {timestamp}", timestamp);
@@ -100,7 +100,7 @@ public static class CborHelper
     public static byte[] GenerateCborPacket()
     {
 
-        CborHeader cborHeader = CborHelper.EncapsulateCbroPayloadWithHeader(CborPayloads.Count);
+        CborHeader cborHeader = CborHelper.EncapsulateCbroPayloadWithHeader();
 
         CborPacket cborPacket = new CborPacket()
         {
@@ -120,7 +120,7 @@ public static class CborHelper
     {
         if (CborPayloads.Count != 0)
         {
-            Log.Information("Random CBOR generation triggered.");
+            Log.Information("Random CBOR generation triggered with {payloadCount} payloads.", CborPayloads.Count);
 
             byte[] cborData = CborHelper.GenerateCborPacket();
 
