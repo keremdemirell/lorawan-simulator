@@ -1,4 +1,6 @@
 using System.Text;
+using Serilog;
+using System.Timers;
 
 public static class PayloadBuilder
 {
@@ -96,11 +98,80 @@ public static class PayloadBuilder
         hex = hex.Substring(2);
 
         byte[] bytes = new byte[hex.Length / 2];
-        for (int i = 0; i < hex.Length; i+=2)
+        for (int i = 0; i < hex.Length; i += 2)
         {
             bytes[i / 2] = Convert.ToByte(hex.Substring(i, 2), 16);
         }
 
         return bytes;
     }
+    
+    
+        public static void ArrangePHYPayload(List<DeviceConfig> devices)
+    {
+        foreach (DeviceConfig device in devices)
+        {
+            Log.Debug("For device DevAddr: {device.DevAddr}, creating {device.PacketSize} packets:", device.DevAddr, device.PacketSize);
+
+            for (int i = 0; i < device.PacketSize; i++)
+            {
+                byte[] phyPayload = GeneratePHYPayload(device.DevAddr, device.NwkSKey, device.AppSKey);
+                Log.Information("PHYPayload generated for DevAddr {DevAddr} (Packet {generatedPacket}/{packetSize})", device.DevAddr, i + 1, device.PacketSize);
+                CborHelper.EncapsulatePhyPayload(phyPayload);
+            }
+        }
+    }
+
+    public static void ArrangeTimedPHYPayload(List<TimedDeviceConfig> devices)
+    {
+        List<Task> tasks = new();
+
+        foreach (TimedDeviceConfig device in devices)
+        {
+            int i = 1;
+
+            var tcs = new TaskCompletionSource();
+
+            System.Timers.Timer timer = new System.Timers.Timer(device.IntervalSeconds);
+            timer.Elapsed += (sender, e) =>
+            {
+                byte[] phyPayload = GenerateTimedPHYPayload(sender, e, device.DevAddr, device.NwkSKey, device.AppSKey);
+                Log.Information("PHYPayload generated for DevAddr {DevAddr} ({generatedPacket} seconds of {totalTime})", device.DevAddr, device.IntervalSeconds / 1000 * i++, device.Duration);
+                CborHelper.EncapsulatePhyPayload(phyPayload);
+            };
+            timer.AutoReset = true;
+            timer.Enabled = true;
+
+            Log.Debug("Sending LoRaWAN packets every {device.IntervalSeconds} milliseconds for {device.DevAddr}.", device.IntervalSeconds, device.DevAddr);
+
+            Task.Delay(device.Duration * 1000).ContinueWith(_ =>
+            {
+                timer.Stop();
+                timer.Dispose();
+                Log.Debug("Finished the {device.Duration} seconds sending for {device.DevAddr}", device.Duration, device.DevAddr);
+                tcs.SetResult();
+            });
+
+            tasks.Add(tcs.Task);
+        }
+
+        Task.WaitAll(tasks.ToArray());
+    }
+
+    public static byte[] GeneratePHYPayload(string devAddr, string nwkSKey, string appSKey)
+    {
+        byte[] phyPayload = PayloadBuilder.BuildPhyPayload(devAddr, nwkSKey, appSKey);
+        Log.Debug("Generated PHYPayload for devaddr {devaddr}: {hexPayload}", devAddr, BitConverter.ToString(phyPayload).Replace("-", ""));
+
+        return phyPayload;
+    }
+
+    public static byte[] GenerateTimedPHYPayload(Object source, ElapsedEventArgs e, string devAddr, string nwkSKey, string appSKey)
+    {
+        byte[] phyPayload = PayloadBuilder.BuildPhyPayload(devAddr, nwkSKey, appSKey);
+        Log.Debug("Generated PHYPayload for devaddr {devaddr}: {hexPayload}", devAddr, BitConverter.ToString(phyPayload).Replace("-", ""));
+
+        return phyPayload;
+    }
+
 }
