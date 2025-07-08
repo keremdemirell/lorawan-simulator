@@ -92,7 +92,6 @@ public static class Program
                 Payloads = CborPayloads
             };
 
-
             byte[] cborData = SerializeToCbor(cborPacket);
             Log.Debug("Created Cbor: {Cbor}", BitConverter.ToString(cborData).Replace("-", ""));
             File.WriteAllBytes("packet.cbor", cborData);
@@ -162,7 +161,6 @@ public static class Program
         Task.WaitAll(tasks.ToArray());
     }
 
-
     public static byte[] GeneratePHYPayload(string devAddr, string nwkSKey, string appSKey) // Object source, ElapsedEventArgs e
     {
         byte[] phyPayload = PayloadBuilder.BuildPhyPayload(devAddr, nwkSKey, appSKey);
@@ -192,6 +190,7 @@ public static class Program
             Frequency = 867000000,
             FrequencyDrift = rnd.Next(-400, -300),
             FrequencyInit = rnd.Next(2) == 0 ? 46 : 60,
+            PayloadLength = phyPayload.Length,
             Payload = phyPayload
         };
 
@@ -248,7 +247,7 @@ public static class Program
         writer.WriteStartArray(packet.Payloads.Count);
         foreach (var p in packet.Payloads)
         {
-            writer.WriteStartArray(8);
+            writer.WriteStartArray(9);
             writer.WriteInt32(p.RegionNumber);
             writer.WriteInt64(p.Timestamp);
             writer.WriteInt32(p.RSSI);
@@ -256,6 +255,7 @@ public static class Program
             writer.WriteInt64(p.Frequency);
             writer.WriteInt32(p.FrequencyDrift);
             writer.WriteInt32(p.FrequencyInit);
+            writer.WriteInt32(p.PayloadLength);
             writer.WriteByteString(p.Payload);
             writer.WriteEndArray();
         }

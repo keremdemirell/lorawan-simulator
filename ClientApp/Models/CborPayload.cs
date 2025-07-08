@@ -7,11 +7,12 @@ public class CborPayload
     public long Frequency { get; set; }
     public int FrequencyDrift { get; set; }
     public int FrequencyInit { get; set; }
+    public int PayloadLength { get; set; }
     public byte[] Payload { get; set; }
 
     public CborPayload() {}
 
-    public CborPayload(int regionNumber, long timestamp, int rSSI, int sNR, long frequency, int frequencyDrift, int frequencyInit, byte[] payload)
+    public CborPayload(int regionNumber, long timestamp, int rSSI, int sNR, long frequency, int frequencyDrift, int frequencyInit,int payloadLength, byte[] payload)
     {
         RegionNumber = regionNumber;
         Timestamp = timestamp;
@@ -19,8 +20,8 @@ public class CborPayload
         SNR = sNR;
         Frequency = frequency;
         FrequencyDrift = frequencyDrift;
+        PayloadLength = payloadLength;
         Payload = payload;
 
-    }
-    
+    }   
 }
