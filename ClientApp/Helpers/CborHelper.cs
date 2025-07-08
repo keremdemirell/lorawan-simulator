@@ -115,4 +115,23 @@ public static class CborHelper
 
         return cborData;
     }
+
+    public static void TriggerCborPacketCreation()
+    {
+        if (CborPayloads.Count != 0)
+        {
+            Log.Information("Random CBOR generation triggered.");
+
+            byte[] cborData = CborHelper.GenerateCborPacket();
+
+            File.WriteAllBytes("packet.cbor", cborData);
+
+            ZeromqHelper.SendCbor(cborData);
+        }
+        else
+        {
+            Log.Warning("Random CBOR generation triggered but there is no payload.");
+        }
+
+    }
 }

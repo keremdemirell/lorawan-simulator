@@ -107,8 +107,10 @@ public static class PayloadBuilder
     }
     
     
-        public static void ArrangePHYPayload(List<DeviceConfig> devices)
+    public static void ArrangePHYPayload(List<DeviceConfig> devices)
     {
+        Random rnd = new Random();
+
         foreach (DeviceConfig device in devices)
         {
             Log.Debug("For device DevAddr: {device.DevAddr}, creating {device.PacketSize} packets:", device.DevAddr, device.PacketSize);
@@ -118,6 +120,10 @@ public static class PayloadBuilder
                 byte[] phyPayload = GeneratePHYPayload(device.DevAddr, device.NwkSKey, device.AppSKey);
                 Log.Information("PHYPayload generated for DevAddr {DevAddr} (Packet {generatedPacket}/{packetSize})", device.DevAddr, i + 1, device.PacketSize);
                 CborHelper.EncapsulatePhyPayload(phyPayload);
+                if (rnd.Next(0, 100) < 20) // %20  chance
+                {
+                    CborHelper.TriggerCborPacketCreation();
+                }
             }
         }
     }
@@ -125,6 +131,7 @@ public static class PayloadBuilder
     public static void ArrangeTimedPHYPayload(List<TimedDeviceConfig> devices)
     {
         List<Task> tasks = new();
+        Random rnd = new Random();
 
         foreach (TimedDeviceConfig device in devices)
         {
@@ -138,6 +145,10 @@ public static class PayloadBuilder
                 byte[] phyPayload = GenerateTimedPHYPayload(sender, e, device.DevAddr, device.NwkSKey, device.AppSKey);
                 Log.Information("PHYPayload generated for DevAddr {DevAddr} ({generatedPacket} seconds of {totalTime})", device.DevAddr, device.IntervalSeconds / 1000 * i++, device.Duration);
                 CborHelper.EncapsulatePhyPayload(phyPayload);
+                if (rnd.Next(0, 100) < 20) // %20  chance
+                {
+                    CborHelper.TriggerCborPacketCreation();
+                }
             };
             timer.AutoReset = true;
             timer.Enabled = true;

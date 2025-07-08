@@ -78,11 +78,7 @@ public static class Program
 
             }
 
-            byte[] cborData = CborHelper.GenerateCborPacket();
-
-            File.WriteAllBytes("packet.cbor", cborData);
-
-            ZeromqHelper.SendCbor(cborData);
+            CborHelper.TriggerCborPacketCreation();
 
             Log.Information("Session finished");
 
