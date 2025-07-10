@@ -53,7 +53,11 @@ public static class PayloadBuilder
         byte fport = 0x01; // since app data is stored in frmpayload
 
         // // FRMPayload
-        byte[] frmpayload = Encoding.ASCII.GetBytes(GetRandomString());
+        // string randAppData = GetRandomizedAppData();
+        // Log.Information("APP DATA: {randappadata} AND ITS LENGTH IS: {len}", randAppData, randAppData.Length);
+        // byte[] frmpayload = Encoding.ASCII.GetBytes(randAppData);
+        // Log.Information("ITS byte LENGTH IS: {len}", frmpayload.Length);
+        byte[] frmpayload = GetRandomizedAppData();
 
         //MIC
 
@@ -202,6 +206,41 @@ public static class PayloadBuilder
 
         string randomDataString = randomStringBuilder.ToString();
         return randomDataString;
+    }
+
+    public static byte[] GetRandomizedAppData()
+    {
+        double tempMin = -120.0, tempMax = 60.0;
+        double humMin = 0.0, humMax = 100.0;
+        double prsrMin = 800.0, prsrMax = 1100.0;
+        double coMin = 0.0, coMax = 10.0;
+        double co2Min = 300.0, co2Max = 10000.0;
+
+        Random rnd = new Random();
+
+        double temp = GenerateRandomValue(rnd, tempMin, tempMax);
+        double hum = GenerateRandomValue(rnd, humMin, humMax);
+        double prsr = GenerateRandomValue(rnd, prsrMin, prsrMax);
+        double co = GenerateRandomValue(rnd, coMin, coMax);
+        double co2 = GenerateRandomValue(rnd, co2Min, co2Max);
+
+        // Convert each sensor value to bytes and store in a list
+        List<byte> appDataBytes = new List<byte>();
+
+        appDataBytes.AddRange(BitConverter.GetBytes((float)temp));
+        appDataBytes.AddRange(BitConverter.GetBytes((float)hum)); 
+        appDataBytes.AddRange(BitConverter.GetBytes((float)prsr));
+        appDataBytes.AddRange(BitConverter.GetBytes((float)co));  
+        appDataBytes.AddRange(BitConverter.GetBytes((float)co2)); 
+
+        // Optionally, log the data as raw bytes (for debugging purposes)
+        Log.Information("AppData (raw bytes): {data}", BitConverter.ToString(appDataBytes.ToArray()).Replace("-", ""));
+        return appDataBytes.ToArray();
+    }
+
+    public static double GenerateRandomValue(Random rnd, double minValue, double maxValue)
+    {
+        return rnd.NextDouble() * (maxValue - minValue) + minValue;
     }
 
 }

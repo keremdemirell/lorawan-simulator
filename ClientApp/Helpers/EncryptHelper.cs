@@ -48,6 +48,27 @@ public static class EncrypytHelper
     }
     public static byte[] EncryptPayload(byte[] payload, byte[] keystream)
     {
+
+        byte[] encrypted = new byte[payload.Length];
+
+        int j = 0;
+        int keyStreamLength = keystream.Length;
+
+
+        for (int i = 0; i < payload.Length; i++)
+        {
+            encrypted[i] = (byte)(payload[i] ^ keystream[j]);
+
+            j++;
+            if (j == keyStreamLength)
+            {
+                j = 0;
+            }
+        }
+
+        return encrypted;
+                
+                /*
         byte[] encrypted = new byte[payload.Length];
 
         for (int i = 0; i < payload.Length; i++)
@@ -56,6 +77,8 @@ public static class EncrypytHelper
         }
 
         return encrypted;
+        */
+
     }
 
     public static byte[] CalculateMIC(
