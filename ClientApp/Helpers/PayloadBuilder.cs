@@ -2,6 +2,7 @@ using System.Text;
 using Serilog;
 using Microsoft.Extensions.Configuration;
 using System.Timers;
+using System.ComponentModel.DataAnnotations;
 
 public static class PayloadBuilder
 {
@@ -18,15 +19,13 @@ public static class PayloadBuilder
     // **│   └── FRMPayload (actual data or MAC commands)**
     // **└── MIC (Message Integrity Code – 4 bytes)**
 
-    private static ushort us_fcnt = 0;
-
     private static readonly IConfiguration Config = new ConfigurationBuilder()
         .SetBasePath(Directory.GetCurrentDirectory())
         .AddJsonFile("appsettings.json")
         .Build();
     private static readonly int TriggerChance = Config.GetValue<int>("CBORTriggerChance");
 
-    public static byte[] BuildPhyPayload(string devAddrString, string nwkSKeyString, string appSKeyString)
+    public static byte[] BuildPhyPayload(string devAddrString, string nwkSKeyString, string appSKeyString, int new_fcnt)
     {
 
         // MHDR
@@ -45,8 +44,7 @@ public static class PayloadBuilder
         byte fctrl = 0x00; // 0000 0000 (0 0 0 0 0000) -> no adr, no adrackreq, no ack, no class b, no fopts since no mac command
 
         // // // FCnt
-        us_fcnt++;
-        byte[] fcnt = BitConverter.GetBytes(us_fcnt);
+        byte[] fcnt = BitConverter.GetBytes(new_fcnt);
 
         // // // FOpts
         // -
@@ -55,12 +53,7 @@ public static class PayloadBuilder
         byte fport = 0x01; // since app data is stored in frmpayload
 
         // // FRMPayload
-        Random rnd = new Random();
-        int randomFactor = rnd.Next(0, 3);
-        string[] factors = new string[] { "TEMP", "HUMD", "PRESR", "PRECP" };
-        int randomValue = rnd.Next(0, 50);
-        string appData = factors[randomFactor] + "=" + randomValue;
-        byte[] frmpayload = Encoding.ASCII.GetBytes(appData);
+        byte[] frmpayload = Encoding.ASCII.GetBytes(GetRandomString());
 
         //MIC
 
@@ -78,7 +71,7 @@ public static class PayloadBuilder
         // frmpayloadEncryption
         byte[] appSKey = convertToBytes(appSKeyString);
 
-        byte[] Si = EncrypytHelper.CreateKeystreamBlock(appSKey, 0x00, devAddr, us_fcnt, 1);
+        byte[] Si = EncrypytHelper.CreateKeystreamBlock(appSKey, 0x00, devAddr, new_fcnt, 1);
 
         byte[] encryptedPayload = EncrypytHelper.EncryptPayload(frmpayload, Si);
         macPayload.AddRange(encryptedPayload);
@@ -93,7 +86,7 @@ public static class PayloadBuilder
         micInput[0] = mhdr;
         macPayload.CopyTo(micInput, 1);
 
-        byte[] mic = EncrypytHelper.CalculateMIC(fport != 0x00 ? nwkSKey : appSKey, devAddr, us_fcnt, micInput, 0x00);
+        byte[] mic = EncrypytHelper.CalculateMIC(fport != 0x00 ? nwkSKey : appSKey, devAddr, new_fcnt, micInput, 0x00);
         phyPayload.AddRange(mic);
 
         return phyPayload.ToArray();
@@ -124,7 +117,7 @@ public static class PayloadBuilder
 
             for (int i = 0; i < device.PacketSize; i++)
             {
-                byte[] phyPayload = GeneratePHYPayload(device.DevAddr, device.NwkSKey, device.AppSKey);
+                byte[] phyPayload = GeneratePHYPayload(device.DevAddr, device.NwkSKey, device.AppSKey, i);
                 Log.Information("PHYPayload generated for DevAddr {DevAddr} (Packet {generatedPacket}/{packetSize})", device.DevAddr, i + 1, device.PacketSize);
                 CborHelper.EncapsulatePhyPayload(phyPayload);
                 if (rnd.Next(0, 100) < TriggerChance)
@@ -139,18 +132,16 @@ public static class PayloadBuilder
     {
         List<Task> tasks = new();
         Random rnd = new Random();
-
         foreach (TimedDeviceConfig device in devices)
         {
-            int i = 1;
-
+            int i = 0;
             var tcs = new TaskCompletionSource();
-
             System.Timers.Timer timer = new System.Timers.Timer(device.IntervalSeconds);
             timer.Elapsed += (sender, e) =>
             {
-                byte[] phyPayload = GenerateTimedPHYPayload(sender, e, device.DevAddr, device.NwkSKey, device.AppSKey);
-                Log.Information("PHYPayload generated for DevAddr {DevAddr} ({generatedPacket} seconds of {totalTime})", device.DevAddr, device.IntervalSeconds / 1000 * i++, device.Duration);
+                i++;
+                byte[] phyPayload = GenerateTimedPHYPayload(sender, e, device.DevAddr, device.NwkSKey, device.AppSKey, i);
+                Log.Information("PHYPayload generated for DevAddr {DevAddr} ({generatedPacket} seconds of {totalTime})", device.DevAddr, device.IntervalSeconds / 1000 * i, device.Duration);
                 CborHelper.EncapsulatePhyPayload(phyPayload);
                 if (rnd.Next(0, 100) < TriggerChance)
                 {
@@ -176,20 +167,41 @@ public static class PayloadBuilder
         Task.WaitAll(tasks.ToArray());
     }
 
-    public static byte[] GeneratePHYPayload(string devAddr, string nwkSKey, string appSKey)
+    public static byte[] GeneratePHYPayload(string devAddr, string nwkSKey, string appSKey, int new_fcnt)
     {
-        byte[] phyPayload = PayloadBuilder.BuildPhyPayload(devAddr, nwkSKey, appSKey);
+        byte[] phyPayload = PayloadBuilder.BuildPhyPayload(devAddr, nwkSKey, appSKey, new_fcnt);
         Log.Debug("Generated PHYPayload for devaddr {devaddr}: {hexPayload}", devAddr, BitConverter.ToString(phyPayload).Replace("-", ""));
 
         return phyPayload;
     }
 
-    public static byte[] GenerateTimedPHYPayload(Object source, ElapsedEventArgs e, string devAddr, string nwkSKey, string appSKey)
+    public static byte[] GenerateTimedPHYPayload(Object source, ElapsedEventArgs e, string devAddr, string nwkSKey, string appSKey, int new_fcnt)
     {
-        byte[] phyPayload = PayloadBuilder.BuildPhyPayload(devAddr, nwkSKey, appSKey);
+        byte[] phyPayload = PayloadBuilder.BuildPhyPayload(devAddr, nwkSKey, appSKey, new_fcnt);
         Log.Debug("Generated PHYPayload for devaddr {devaddr}: {hexPayload}", devAddr, BitConverter.ToString(phyPayload).Replace("-", ""));
 
         return phyPayload;
+    }
+
+    public static string GetRandomString()
+    {
+        Random rnd = new Random();
+
+        string validChars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789öçşğİĞÜşİ$%&!#@^*()-_=+,.<>?";
+
+        byte[] randomData = new byte[16];
+
+        rnd.NextBytes(randomData);
+
+        StringBuilder randomStringBuilder = new StringBuilder();
+
+        foreach (byte b in randomData)
+        {
+            randomStringBuilder.Append(validChars[b % validChars.Length]);
+        }
+
+        string randomDataString = randomStringBuilder.ToString();
+        return randomDataString;
     }
 
 }

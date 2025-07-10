@@ -27,8 +27,6 @@ class Program
 
             while (true)
             {
-                // topic = server.ReceiveFrameString();
-
                 byte[] cborBytes = server.ReceiveFrameBytes();
                 Console.WriteLine("Received {0} bytes from client.", cborBytes.Length);
                 Console.WriteLine(BitConverter.ToString(cborBytes).Replace("-", ""));

@@ -8,7 +8,7 @@ public static class EncrypytHelper
         byte[] appSKey,     // 16 bytes AES key
         byte dir,     // 0 = uplink, 1 = downlink
         byte[] devAddr,     // 4 bytes, little-endian
-        ushort fcnt,        // frame counter
+        int fcnt,        // frame counter
         byte i     // 1-based block number (1, 2, ...)
     )
     {
@@ -61,7 +61,7 @@ public static class EncrypytHelper
     public static byte[] CalculateMIC(
         byte[] key,
         byte[] devAddr,
-        ushort fcnt,
+        int fcnt,
         byte[] msg,
         byte dir
     )
